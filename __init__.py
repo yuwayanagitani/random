@@ -1,6 +1,7 @@
 import os
 import re
 import random
+import html
 
 from aqt import gui_hooks, mw
 from aqt.utils import openFolder, showInfo
@@ -305,6 +306,9 @@ def inject_random_image(text: str, card, kind: str) -> str:
     folder_name = _sanitize_folder_name(cfg.get("folder_name", "random_images"))
     img_src = f"{folder_name}/{filename}"
 
+    # Hover tooltip: show original filename (escape for HTML attribute safety)
+    title_attr = html.escape(filename, quote=True)
+
     max_w = cfg.get("max_width_percent", 80)
     max_h = cfg.get("max_height_vh", 60)
 
@@ -333,7 +337,7 @@ def inject_random_image(text: str, card, kind: str) -> str:
 
     extra_html = f"""
 <div style="text-align:center; margin-top:15px;">
-  <img src="{img_src}" style="{style_attr}">
+  <img src="{img_src}" style="{style_attr}" title="{title_attr}>
 {caption_html}</div>
 """
     return text + extra_html
