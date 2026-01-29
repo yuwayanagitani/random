@@ -24,6 +24,14 @@ _question_seen_count = 0
 _current_card_should_show_image = False
 
 
+def _reset_session_state():
+    """Reset the session counter when profile/collection changes."""
+    global _question_seen_count, _current_card_should_show_image
+    _question_seen_count = 0
+    _current_card_should_show_image = False
+    print("[RandomImageAddon] Session state reset.")
+
+
 def _defaults() -> dict:
     return {
         "enabled": True,
@@ -341,9 +349,9 @@ def inject_random_image(text: str, card, kind: str) -> str:
         if not cfg.get("show_on_answer", True):
             return text
     else:
-        # For other kinds, respect interval gating
-        if not _current_card_should_show_image:
-            return text
+        # For other card kinds (unlikely in normal usage), don't show images
+        # to avoid confusion from stale state
+        return text
 
     filename = pick_random_image_filename(cfg)
     if not filename:
@@ -411,6 +419,9 @@ def _register_config_action() -> None:
 
 def _on_main_window_init():
     _register_config_action()
+    # Reset session state when profile/collection changes
+    gui_hooks.profile_did_open.append(_reset_session_state)
+    gui_hooks.collection_did_load.append(lambda col: _reset_session_state())
 
 
 # メインウィンドウ初期化後に登録
