@@ -115,6 +115,18 @@ Example:
 
 - `cute-cat_2024-01.jpg` → `CUTE CAT`
 
+### Show every N cards
+Default: `1` (every card)  
+Set the display interval for random images.
+
+Examples:
+
+- `1` = Show an image on every card (default behavior)
+- `10` = Show an image only on every 10th card
+- `50` = Show an image only on every 50th card
+
+When a card is selected to show an image, it appears on both the Question and Answer sides (if both are enabled in settings).
+
 ---
 
 ## 🧩 How it works (technical overview)

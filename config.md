@@ -29,3 +29,11 @@ Set to 0 for no height limit.<br>
 <br>
 **avoid_repeat** (true/false)<br>
 Avoid showing the same image twice in a row.<br>
+<br>
+**show_filename** (true/false)<br>
+Show a cleaned-up filename caption under the image.<br>
+<br>
+**show_every_n_cards** (number, min 1)<br>
+Display interval for random images. Set to 1 to show an image on every card, 10 to show only on every 10th card, etc.<br>
+Example: `10` → shows images only on every 10th Question (and its corresponding Answer if enabled).<br>
+Default: `1` (every card)<br>

@@ -19,6 +19,10 @@ VALID_EXT = (".png", ".jpg", ".jpeg", ".gif")
 # 直前に表示したファイル名（avoid_repeat 用）
 _last_filename = None
 
+# Session state for interval gating
+_question_seen_count = 0
+_current_card_should_show_image = False
+
 
 def _defaults() -> dict:
     return {
@@ -30,6 +34,7 @@ def _defaults() -> dict:
         "max_height_vh": 60,
         "avoid_repeat": True,
         "show_filename": True,
+        "show_every_n_cards": 1,
     }
 
 
@@ -183,6 +188,15 @@ class RandomImageSettingsDialog(QDialog):
         self.cb_fn.setChecked(bool(cfg.get("show_filename", True)))
         form.addRow(self.cb_fn)
 
+        # show_every_n_cards
+        self.sp_interval = QSpinBox()
+        self.sp_interval.setRange(1, 9999)  # min=1 as per spec
+        self.sp_interval.setValue(int(cfg.get("show_every_n_cards", 1)))
+        interval_help = QLabel("Show every N cards (1 = every card)")
+        interval_help.setWordWrap(True)
+        form.addRow("Show every N cards", self.sp_interval)
+        form.addRow("", interval_help)
+
         # Buttons
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -215,6 +229,7 @@ class RandomImageSettingsDialog(QDialog):
             "max_height_vh": int(self.sp_h.value()),
             "avoid_repeat": bool(self.cb_avoid.isChecked()),
             "show_filename": bool(self.cb_fn.isChecked()),
+            "show_every_n_cards": int(self.sp_interval.value()),
         }
         _write_config(new_cfg)
         self.accept()
@@ -233,6 +248,8 @@ class RandomImageSettingsDialog(QDialog):
 
         self.cb_avoid.setChecked(bool(d.get("avoid_repeat", True)))
         self.cb_fn.setChecked(bool(d.get("show_filename", True)))
+        
+        self.sp_interval.setValue(int(d.get("show_every_n_cards", 1)))
 
 
 
@@ -289,15 +306,44 @@ def inject_random_image(text: str, card, kind: str) -> str:
     card_will_show フック用
     kind: "reviewQuestion", "reviewAnswer" など
     """
+    global _question_seen_count, _current_card_should_show_image
+    
     cfg = get_config()
 
     if not cfg.get("enabled", True):
         return text
 
-    if kind.endswith("Question") and not cfg.get("show_on_question", True):
-        return text
-    if kind.endswith("Answer") and not cfg.get("show_on_answer", True):
-        return text
+    # Get interval setting with robust coercion
+    interval = cfg.get("show_every_n_cards", 1)
+    try:
+        interval = int(interval)
+        if interval <= 0:
+            interval = 1
+    except (TypeError, ValueError):
+        interval = 1
+
+    # Handle Question side: increment counter and decide if this card should show image
+    if kind.endswith("Question"):
+        _question_seen_count += 1
+        _current_card_should_show_image = (_question_seen_count % interval == 0)
+        
+        # If this card should not show images, return early
+        if not _current_card_should_show_image:
+            return text
+            
+        if not cfg.get("show_on_question", True):
+            return text
+    elif kind.endswith("Answer"):
+        # For Answer side, only show if the Question side decided to show
+        if not _current_card_should_show_image:
+            return text
+            
+        if not cfg.get("show_on_answer", True):
+            return text
+    else:
+        # For other kinds, respect interval gating
+        if not _current_card_should_show_image:
+            return text
 
     filename = pick_random_image_filename(cfg)
     if not filename:
